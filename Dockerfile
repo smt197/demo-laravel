@@ -26,25 +26,15 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg
 
 # Install PHP extensions
 RUN docker-php-ext-install -j$(nproc) \
-    pdo \
     pdo_mysql \
     mysqli \
-    mbstring \
     exif \
     pcntl \
     bcmath \
     gd \
     zip \
     intl \
-    opcache \
-    soap \
-    xml \
-    curl \
-    fileinfo \
-    tokenizer \
-    ctype \
-    json \
-    iconv
+    soap
 
 # Install Redis extension
 RUN pecl install redis && docker-php-ext-enable redis
@@ -89,10 +79,9 @@ RUN mkdir -p /app/storage/logs \
 # Build assets
 RUN npm run build
 
-# Generate application key and run optimizations
-RUN php artisan config:cache \
-    && php artisan route:cache \
-    && php artisan view:cache
+# Copy entrypoint script
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Create FrankenPHP configuration
 COPY <<EOF /etc/caddy/Caddyfile
@@ -134,6 +123,9 @@ EXPOSE 80
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD curl -f http://localhost/ || exit 1
+
+# Set entrypoint
+ENTRYPOINT ["docker-entrypoint.sh"]
 
 # Start FrankenPHP
 CMD ["frankenphp", "run"]
