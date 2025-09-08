@@ -39,7 +39,6 @@ RUN docker-php-ext-install -j$(nproc) \
     opcache \
     soap \
     xml \
-    xmlrpc \
     curl \
     fileinfo \
     tokenizer \
