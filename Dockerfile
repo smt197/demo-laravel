@@ -39,6 +39,9 @@ RUN docker-php-ext-install -j$(nproc) \
 # Install Redis extension
 RUN pecl install redis && docker-php-ext-enable redis
 
+# Install Composer
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+
 # Configure OpCache for production
 RUN echo "opcache.memory_consumption=128" >> /usr/local/etc/php/conf.d/opcache.ini \
     && echo "opcache.interned_strings_buffer=8" >> /usr/local/etc/php/conf.d/opcache.ini \
