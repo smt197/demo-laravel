@@ -62,8 +62,8 @@ RUN composer install --no-dev --optimize-autoloader --no-scripts
 # Copy package.json and package-lock.json
 COPY package.json package-lock.json ./
 
-# Install Node.js dependencies
-RUN npm ci --only=production
+# Install Node.js dependencies (including dev dependencies for build)
+RUN npm ci
 
 # Copy application code
 COPY . .
@@ -81,6 +81,9 @@ RUN mkdir -p /app/storage/logs \
 
 # Build assets
 RUN npm run build
+
+# Remove dev dependencies after build to reduce image size
+RUN npm ci --only=production && npm cache clean --force
 
 # Copy entrypoint script
 COPY docker-entrypoint.sh /usr/local/bin/
