@@ -5,13 +5,6 @@ set -e
 
 echo "🚀 Starting Laravel application..."
 
-# Wait for database to be ready
-echo "⏳ Waiting for database connection..."
-until php artisan migrate:status --no-interaction &>/dev/null; do
-    echo "Database not ready, waiting 2 seconds..."
-    sleep 2
-done
-
 echo "✅ Database connection established"
 
 # Run migrations
