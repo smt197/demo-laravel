@@ -95,7 +95,7 @@ COPY <<EOF /etc/caddy/Caddyfile
     frankenphp
 }
 
-:80 {
+:8081 {
     root * /app/public
     
     # Enable FrankenPHP for PHP files
@@ -139,12 +139,12 @@ COPY <<EOF /etc/caddy/Caddyfile
 }
 EOF
 
-# Expose port 80
-EXPOSE 80
+# Expose port 8081
+EXPOSE 8081
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost/ || exit 1
+    CMD curl -f http://localhost:8081/ || exit 1
 
 # Set entrypoint
 ENTRYPOINT ["docker-entrypoint.sh"]
