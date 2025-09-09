@@ -96,16 +96,16 @@ COPY <<EOF /etc/caddy/Caddyfile
 }
 
 :8081 {
-    root * /app/public
+    # Set the webroot to the public/ directory (relative to /app)
+    root * public/
     
-    # Enable FrankenPHP for PHP files
-    php_server
+    # Enable compression
+    encode zstd br gzip
     
-    # Handle Laravel routes - try files first, then fallback to index.php
-    try_files {path} {path}/ /index.php?{query}
-    
-    # Serve static files
-    file_server
+    # Execute PHP files and serve assets
+    php_server {
+        try_files {path} index.php
+    }
     
     # Security headers
     header {
@@ -125,17 +125,6 @@ COPY <<EOF /etc/caddy/Caddyfile
         path /.git*
     }
     respond @forbidden 403
-    
-    # Handle PHP files explicitly
-    @php {
-        path *.php
-        file {
-            try_files {path} /index.php
-        }
-    }
-    handle @php {
-        php
-    }
 }
 EOF
 
