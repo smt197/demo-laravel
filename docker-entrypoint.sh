@@ -9,7 +9,7 @@ echo "✅ Database connection established"
 
 # Run migrations
 echo "🔄 Running database migrations..."
-php artisan migrate --force --no-interaction
+php artisan migrate --no-interaction
 
 # Clear and cache config for production
 echo "🔧 Optimizing application..."
