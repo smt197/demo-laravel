@@ -97,11 +97,15 @@ COPY <<EOF /etc/caddy/Caddyfile
 
 :80 {
     root * /app/public
-    php_fastcgi unix//var/run/php/php-fpm.sock
-    file_server
     
-    # Handle Laravel routes
+    # Enable FrankenPHP for PHP files
+    php_server
+    
+    # Handle Laravel routes - try files first, then fallback to index.php
     try_files {path} {path}/ /index.php?{query}
+    
+    # Serve static files
+    file_server
     
     # Security headers
     header {
@@ -118,8 +122,20 @@ COPY <<EOF /etc/caddy/Caddyfile
         path /composer.lock
         path /package.json
         path /package-lock.json
+        path /.git*
     }
     respond @forbidden 403
+    
+    # Handle PHP files explicitly
+    @php {
+        path *.php
+        file {
+            try_files {path} /index.php
+        }
+    }
+    handle @php {
+        php
+    }
 }
 EOF
 
