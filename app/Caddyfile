@@ -1,0 +1,51 @@
+{
+    # Enables FrankenPHP
+    frankenphp
+    # Optional: configure the number of threads and other options
+    # frankenphp {
+    #     num_threads 4
+    # }
+
+    # Enable on-demand TLS for custom domains (optional)
+    # on_demand_tls {
+    #     ask http://localhost:8081/ask-tls
+    # }
+}
+
+# Your site's address
+:8081 {
+    # Set the webroot to your Laravel public/ directory
+    root * public/
+
+    # Enable compression to improve performance
+    encode zstd br gzip
+
+    # Handle PHP requests
+    php_server {
+        # This will try to serve a file if it exists, otherwise fall back to index.php
+        try_files {path} /index.php?{query}
+    }
+
+    # Security headers
+    header {
+        # Add various security headers to all responses
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        X-XSS-Protection "1; mode=block"
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        # Remove the Server header for security
+        -Server
+    }
+
+    # Deny access to sensitive files
+    @forbidden {
+        path /.env*
+        path /composer.json
+        path /composer.lock
+        path /package.json
+        path /package-lock.json
+        path /.git*
+        path /storage/logs*
+    }
+    respond @forbidden 403
+}

@@ -1,6 +1,7 @@
-FROM dunglas/frankenphp:latest-php8.3
+# Stage 1: Build assets and install Composer dependencies
+FROM dunglas/frankenphp:latest-php8.3 AS builder
 
-# Install system dependencies
+# Install system dependencies for building assets and Composer packages
 RUN apt-get update && apt-get install -y \
     git \
     curl \
@@ -11,9 +12,6 @@ RUN apt-get update && apt-get install -y \
     libjpeg62-turbo-dev \
     libzip-dev \
     libicu-dev \
-    libcurl4-openssl-dev \
-    pkg-config \
-    libssl-dev \
     zip \
     unzip \
     nodejs \
@@ -21,10 +19,7 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Configure GD extension
-RUN docker-php-ext-configure gd --with-freetype --with-jpeg
-
-# Install PHP extensions
+# Install PHP extensions required for Composer install and asset building
 RUN docker-php-ext-install -j$(nproc) \
     pdo_mysql \
     mysqli \
@@ -40,93 +35,41 @@ RUN docker-php-ext-install -j$(nproc) \
 RUN pecl install redis && docker-php-ext-enable redis
 
 # Install Composer
-RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+COPY --from=composer:latest /usr/bin/composer /usr/local/bin/composer
 
-# Configure OpCache for production
-RUN echo "opcache.memory_consumption=128" >> /usr/local/etc/php/conf.d/opcache.ini \
-    && echo "opcache.interned_strings_buffer=8" >> /usr/local/etc/php/conf.d/opcache.ini \
-    && echo "opcache.max_accelerated_files=4000" >> /usr/local/etc/php/conf.d/opcache.ini \
-    && echo "opcache.revalidate_freq=2" >> /usr/local/etc/php/conf.d/opcache.ini \
-    && echo "opcache.fast_shutdown=1" >> /usr/local/etc/php/conf.d/opcache.ini \
-    && echo "opcache.enable_cli=1" >> /usr/local/etc/php/conf.d/opcache.ini
-
-# Set working directory
 WORKDIR /app
 
-# Copy composer files
+# Copy composer files and install dependencies
 COPY composer.json composer.lock ./
-
-# Install Composer dependencies
 RUN composer install --no-dev --optimize-autoloader --no-scripts
 
-# Copy package.json and package-lock.json
+# Copy package files and install npm dependencies, then build assets
 COPY package.json package-lock.json ./
+RUN npm ci && npm run build
 
-# Install Node.js dependencies (including dev dependencies for build)
-RUN npm ci
-
-# Copy application code
+# Copy the rest of the application code
 COPY . .
 
-# Set proper permissions for Laravel
+# Set permissions for storage and bootstrap cache
 RUN chown -R www-data:www-data /app \
     && chmod -R 755 /app/storage \
     && chmod -R 755 /app/bootstrap/cache
 
-# Create storage directories if they don't exist
-RUN mkdir -p /app/storage/logs \
-    && mkdir -p /app/storage/framework/cache \
-    && mkdir -p /app/storage/framework/sessions \
-    && mkdir -p /app/storage/framework/views
 
-# Build assets
-RUN npm run build
+# Stage 2: Final production image
+FROM dunglas/frankenphp:latest-php8.3
 
-# Remove dev dependencies after build to reduce image size
-RUN npm ci --only=production && npm cache clean --force
+# Set working directory
+WORKDIR /app
 
-# Copy entrypoint script
-COPY docker-entrypoint.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+# Copy the Caddyfile
+COPY --from=builder /app/Caddyfile /etc/caddy/Caddyfile
 
-# Create FrankenPHP configuration
-COPY <<EOF /etc/caddy/Caddyfile
-{
-    frankenphp
-}
+# Copy the application code from the builder stage
+COPY --from=builder /app .
 
-:8081 {
-    # Set the webroot to the public/ directory (relative to /app)
-    root * public/
-    
-    # Enable compression
-    encode zstd br gzip
-    
-    # Execute PHP files and serve assets
-    php_server {
-        try_files {path} index.php
-    }
-    
-    # Security headers
-    header {
-        X-Content-Type-Options nosniff
-        X-Frame-Options DENY
-        X-XSS-Protection "1; mode=block"
-        Strict-Transport-Security "max-age=31536000; includeSubDomains"
-    }
-    
-    # Disable access to sensitive files
-    @forbidden {
-        path /.env*
-        path /composer.json
-        path /composer.lock
-        path /package.json
-        path /package-lock.json
-        path /.git*
-    }
-    respond @forbidden 403
-}
-EOF
+# Set proper permissions
+RUN chown -R www-data:www-data /app
 
 # Expose port 8081
 EXPOSE 8081
@@ -135,8 +78,5 @@ EXPOSE 8081
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8081/ || exit 1
 
-# Set entrypoint
-ENTRYPOINT ["docker-entrypoint.sh"]
-
 # Start FrankenPHP
-CMD ["frankenphp", "run"]
+CMD ["frankenphp", "run", "--config", "/etc/caddy/Caddyfile"]
