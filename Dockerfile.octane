@@ -16,8 +16,11 @@ RUN install-php-extensions \
    pcntl
 
 
-# Installer netcat et composer
-RUN apt-get update && apt-get install -y netcat-traditional unzip && rm -rf /var/lib/apt/lists/*
+# Installer netcat, composer et Node.js
+RUN apt-get update && apt-get install -y netcat-traditional unzip curl && \
+    curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+    apt-get install -y nodejs && \
+    rm -rf /var/lib/apt/lists/*
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
 
@@ -38,8 +41,16 @@ RUN test -f /app/artisan && echo "✓ artisan found" || (echo "✗ artisan missi
 RUN test -f /app/composer.json && echo "✓ composer.json found" || (echo "✗ composer.json missing" && exit 1)
 
 
-# Installer les dépendances
+# Installer les dépendances PHP
 RUN composer install --no-dev --optimize-autoloader
+
+# Installer les dépendances npm et compiler les assets
+RUN if [ -f package.json ]; then \
+        npm ci && \
+        npm run build; \
+    else \
+        echo "No package.json found, skipping npm build"; \
+    fi
 
 
 # Utiliser .env s'il existe, sinon copier .env.example
