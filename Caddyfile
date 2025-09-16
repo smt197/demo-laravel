@@ -1,8 +1,10 @@
-:8081 {
+:80 {
     root * /app/public
     encode zstd br gzip
 
-    php_server
+    php_server {
+        try_files {path} /index.php?{query}
+    }
 
     header {
         X-Content-Type-Options nosniff

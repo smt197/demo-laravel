@@ -77,7 +77,7 @@ COPY --from=builder /app .
 RUN chown -R www-data:www-data /app
 
 # Expose port 8081
-EXPOSE 8081
+EXPOSE 80
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
