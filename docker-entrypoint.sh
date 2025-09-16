@@ -36,4 +36,4 @@ chmod -R 775 /app/storage /app/bootstrap/cache
 echo "✅ Laravel application ready!"
 
 # Start Laravel Octane with FrankenPHP
-exec php /app/artisan octane:start --server=frankenphp --host=0.0.0.0 --port=80
+exec php /app/artisan octane:start --server=frankenphp --host=0.0.0.0 --port=80 --admin-port=2019

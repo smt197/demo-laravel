@@ -63,7 +63,7 @@ COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Exposer les ports
-EXPOSE 80 443
+EXPOSE 80 443 2019
 
 
 # Utiliser le script de démarrage
