@@ -43,7 +43,7 @@ RUN composer install --no-dev --optimize-autoloader
 
 
 # Utiliser .env s'il existe, sinon copier .env.example
-RUN if [ ! -f /app/.env ]; then cp /app/.env.example /app/.env; fi
+# RUN if [ ! -f /app/.env ]; then cp /app/.env.example /app/.env; fi
 
 
 # Créer les répertoires nécessaires et définir les permissions
