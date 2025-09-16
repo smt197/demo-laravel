@@ -16,8 +16,12 @@ RUN install-php-extensions \
    pcntl
 
 
-# Installer netcat, composer et Node.js
+# Installer composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+# Installer Node.js et npm
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs
 
 
 # Définir le répertoire de travail
