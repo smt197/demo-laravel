@@ -14,10 +14,12 @@ RUN apt-get update && apt-get install -y \
     libicu-dev \
     zip \
     unzip \
-    nodejs \
-    npm \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
+# Install Node.js 22 (compatible avec Vite)
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+    && apt-get install -y nodejs
 
 # Install PHP extensions required for Composer install and asset building
 RUN docker-php-ext-install -j$(nproc) \
@@ -43,12 +45,15 @@ WORKDIR /app
 COPY composer.json composer.lock ./
 RUN composer install --no-dev --optimize-autoloader --no-scripts
 
-# Copy package files and install npm dependencies, then build assets
-COPY package.json package-lock.json ./
-RUN npm ci && npm run build
+# Copy JS + Vite config first, then install npm deps
+COPY package.json package-lock.json vite.config.js ./ 
+RUN npm ci
 
 # Copy the rest of the application code
 COPY . .
+
+# Build assets
+RUN npm run build
 
 # Set permissions for storage and bootstrap cache
 RUN chown -R www-data:www-data /app \
