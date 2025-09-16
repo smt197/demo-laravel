@@ -26,9 +26,9 @@ WORKDIR /var/www/html
 # Copy the Laravel application files into the container.
 COPY . .
 
-# Start with base PHP config, then add extensions.
-COPY ./.docker/php/php.ini /usr/local/etc/php/
-COPY ./.docker/etc/supervisor.d/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+# Copy configuration files
+COPY ./supervisor/php.ini /usr/local/etc/php/
+COPY ./supervisor/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 # Install PHP extensions
 RUN pecl install xdebug
