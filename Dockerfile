@@ -55,6 +55,9 @@ COPY . .
 # Build assets
 RUN npm run build
 
+RUN php artisan optimize:clear
+RUN php artisan optimize
+
 # Set permissions for storage and bootstrap cache
 RUN chown -R www-data:www-data /app \
     && chmod -R 755 /app/storage \
