@@ -1,9 +1,11 @@
 :80 {
     root * /app/public
     encode zstd br gzip
+    file_server
 
-    php_server {
-        try_files {path} /index.php?{query}
+    # Configuration PHP
+    php_fastcgi unix//var/run/php/php-fpm.sock {
+        try_files {path} {path}/ /index.php?{query}
     }
 
     header {
@@ -24,4 +26,9 @@
         path /storage/logs*
     }
     respond @forbidden 403
+
+    # Redirection pour Laravel
+    rewrite {
+        to {path} {path}/ /index.php?{query}
+    }
 }
