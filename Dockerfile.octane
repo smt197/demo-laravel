@@ -59,64 +59,15 @@ RUN mkdir -p /app/storage/logs \
 
 
 # Créer un script de démarrage CORRIGÉ
-RUN echo '#!/bin/bash\n\
-set -e\n\
-\n\
-echo "=== Laravel FrankenPHP Container Starting ==="\n\
-\n\
-# Vérifier les fichiers essentiels\n\
-if [ ! -f /app/artisan ]; then\n\
-   echo "ERROR: artisan file not found!"\n\
-   ls -la /app/\n\
-   exit 1\n\
-fi\n\
-\n\
-echo "Waiting for database connection..."\n\
-until nc -z mysql_database 3306; do\n\
-   echo "Database not ready, waiting..."\n\
-   sleep 3\n\
-done\n\
-\n\
-echo "Database ready! Setting up Laravel..."\n\
-\n\
-# Générer la clé d application uniquement si pas déjà définie\n\
-if [ -z "$APP_KEY" ] || [ "$APP_KEY" = "" ]; then\n\
-   echo "Generating application key..."\n\
-   php /app/artisan key:generate --force\n\
-else\n\
-   echo "APP_KEY already set via environment variables"\n\
-fi\n\
-\n\
-# Nettoyer le cache\n\
-echo "Clearing caches..."\n\
-php /app/artisan config:clear || true\n\
-php /app/artisan cache:	clear || true\n\
-php /app/artisan route:clear || true\n\
-php /app/artisan view:clear || true\n\
-\n\
-# Attendre un peu plus pour la DB\n\
-echo "Final database check..."\n\
-sleep 5\n\
-\n\
-# Exécuter les migrations\n\
-echo "Running migrations..."\n\
-php artisan migrate:status\n\
-php artisan migrate --force --step || echo "Migration had issues, but continuing..."\n\
-\n\
-echo "=== Starting FrankenPHP with Laravel Octane ==="\n\
-exec php /app/artisan octane:start --server=frankenphp --host=0.0.0.0 --port=80 --admin-port=2019\n\
-' > /start.sh
-
-
-RUN chmod +x /start.sh
-
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Exposer les ports
-EXPOSE 80 8001 443 2019
+EXPOSE 80 443
 
 
 # Utiliser le script de démarrage
-CMD ["/start.sh"]
+CMD ["/usr/local/bin/docker-entrypoint.sh"]
 
 
 
