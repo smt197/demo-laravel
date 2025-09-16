@@ -35,5 +35,6 @@ chmod -R 775 /app/storage /app/bootstrap/cache
 
 echo "✅ Laravel application ready!"
 
-# Start Laravel Octane with FrankenPHP
-# php artisan octane:start --server=frankenphp --host=0.0.0.0 --port=80 --admin-port=2019 --watch
+# Start supervisor to manage processes
+echo "🚀 Starting supervisor..."
+exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf
