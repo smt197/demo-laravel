@@ -76,12 +76,12 @@ COPY --from=builder /app .
 # Set proper permissions
 RUN chown -R www-data:www-data /app
 
-# Expose port 8081
+# Expose port 80
 EXPOSE 80
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8081/ || exit 1
+    CMD curl -f http://localhost:80/ || exit 1
 
 # Start FrankenPHP
 CMD ["frankenphp", "run", "--config", "/etc/caddy/Caddyfile"]
