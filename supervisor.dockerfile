@@ -19,9 +19,10 @@ RUN install-php-extensions \
 # Installer composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# Installer Node.js et npm
+# Installer Node.js et supervisor
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-    && apt-get install -y nodejs
+    && apt-get update && apt-get install -y nodejs supervisor \
+    && rm -rf /var/lib/apt/lists/*
 
 
 # Définir le répertoire de travail
@@ -59,8 +60,6 @@ RUN if [ -f package.json ]; then \
 RUN chown -R www-data:www-data /app/storage /app/bootstrap/cache
 
 
-# Installer supervisor
-RUN apt-get update && apt-get install -y supervisor && rm -rf /var/lib/apt/lists/*
 
 # Copier la configuration supervisor
 COPY supervisor/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
@@ -70,7 +69,7 @@ COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Exposer les ports
-EXPOSE 80 443
+EXPOSE 80 443 2019
 
 
 # Utiliser le script de démarrage qui lance supervisor
