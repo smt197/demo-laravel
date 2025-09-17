@@ -127,6 +127,34 @@ return [
             'path' => storage_path('logs/laravel.log'),
         ],
 
+        // Microservice specific channels
+        'microservice' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/microservice.log'),
+            'level' => env('LOG_LEVEL', 'info'),
+            'days' => 30,
+            'replace_placeholders' => true,
+        ],
+
+        'api' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/api.log'),
+            'level' => env('LOG_LEVEL', 'info'),
+            'days' => 30,
+            'replace_placeholders' => true,
+        ],
+
+        'structured' => [
+            'driver' => 'monolog',
+            'handler' => StreamHandler::class,
+            'handler_with' => [
+                'stream' => storage_path('logs/structured.log'),
+            ],
+            'formatter' => \Monolog\Formatter\JsonFormatter::class,
+            'level' => env('LOG_LEVEL', 'info'),
+            'processors' => [PsrLogMessageProcessor::class],
+        ],
+
     ],
 
 ];

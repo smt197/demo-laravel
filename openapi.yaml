@@ -1,0 +1,530 @@
+openapi: 3.0.3
+info:
+  title: User Management Microservice API
+  description: |
+    API REST pour la gestion des utilisateurs dans une architecture microservice.
+
+    Cette API fournit des endpoints pour:
+    - Authentification et autorisation
+    - Gestion CRUD des utilisateurs
+    - Health checks et monitoring
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@example.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8080/api
+    description: Serveur de développement
+  - url: https://api.example.com/api
+    description: Serveur de production
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      description: Vérifie l'état de santé du microservice
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Service en bonne santé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthCheck'
+
+  /ready:
+    get:
+      summary: Readiness check
+      description: Vérifie si le service est prêt à recevoir des requêtes
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Service prêt
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadinessCheck'
+        '503':
+          description: Service non prêt
+
+  /metrics:
+    get:
+      summary: Métriques Prometheus
+      description: Endpoint pour les métriques au format Prometheus
+      tags:
+        - Monitoring
+      responses:
+        '200':
+          description: Métriques disponibles
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  /v1/auth/login:
+    post:
+      summary: Connexion utilisateur
+      description: Authentifie un utilisateur et retourne un token d'accès
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Connexion réussie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '422':
+          description: Données invalides
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+
+  /v1/auth/register:
+    post:
+      summary: Inscription utilisateur
+      description: Crée un nouveau compte utilisateur
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Inscription réussie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '422':
+          description: Données invalides
+
+  /v1/auth/logout:
+    post:
+      summary: Déconnexion
+      description: Invalide le token d'accès actuel
+      tags:
+        - Authentication
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Déconnexion réussie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '401':
+          description: Non authentifié
+
+  /v1/auth/me:
+    get:
+      summary: Profil utilisateur
+      description: Récupère les informations de l'utilisateur authentifié
+      tags:
+        - Authentication
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Profil utilisateur
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+
+  /v1/users:
+    get:
+      summary: Liste des utilisateurs
+      description: Récupère la liste paginée des utilisateurs
+      tags:
+        - Users
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: search
+          in: query
+          description: Terme de recherche
+          schema:
+            type: string
+        - name: sort
+          in: query
+          description: Champ de tri
+          schema:
+            type: string
+            default: created_at
+        - name: direction
+          in: query
+          description: Direction du tri
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+        - name: per_page
+          in: query
+          description: Nombre d'éléments par page
+          schema:
+            type: integer
+            default: 15
+            minimum: 1
+            maximum: 100
+      responses:
+        '200':
+          description: Liste des utilisateurs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserCollection'
+
+    post:
+      summary: Créer un utilisateur
+      description: Crée un nouveau utilisateur
+      tags:
+        - Users
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '201':
+          description: Utilisateur créé
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  user:
+                    $ref: '#/components/schemas/User'
+
+  /v1/users/{id}:
+    get:
+      summary: Détails d'un utilisateur
+      description: Récupère les détails d'un utilisateur spécifique
+      tags:
+        - Users
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID de l'utilisateur
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Détails de l'utilisateur
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+        '404':
+          description: Utilisateur non trouvé
+
+    put:
+      summary: Modifier un utilisateur
+      description: Met à jour les informations d'un utilisateur
+      tags:
+        - Users
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID de l'utilisateur
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+      responses:
+        '200':
+          description: Utilisateur modifié
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  user:
+                    $ref: '#/components/schemas/User'
+
+    delete:
+      summary: Supprimer un utilisateur
+      description: Supprime un utilisateur
+      tags:
+        - Users
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID de l'utilisateur
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Utilisateur supprimé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "John Doe"
+        email:
+          type: string
+          format: email
+          example: "john@example.com"
+        email_verified_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+        password:
+          type: string
+          example: "password123"
+        remember:
+          type: boolean
+          default: false
+
+    RegisterRequest:
+      type: object
+      required:
+        - name
+        - email
+        - password
+        - password_confirmation
+      properties:
+        name:
+          type: string
+          example: "John Doe"
+        email:
+          type: string
+          format: email
+          example: "john@example.com"
+        password:
+          type: string
+          example: "password123"
+        password_confirmation:
+          type: string
+          example: "password123"
+
+    CreateUserRequest:
+      type: object
+      required:
+        - name
+        - email
+        - password
+      properties:
+        name:
+          type: string
+          example: "John Doe"
+        email:
+          type: string
+          format: email
+          example: "john@example.com"
+        password:
+          type: string
+          example: "password123"
+
+    UpdateUserRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "John Doe"
+        email:
+          type: string
+          format: email
+          example: "john@example.com"
+        password:
+          type: string
+          example: "newpassword123"
+
+    AuthResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Login successful"
+        user:
+          $ref: '#/components/schemas/User'
+        access_token:
+          type: string
+          example: "1|abcdef123456..."
+        token_type:
+          type: string
+          example: "Bearer"
+
+    UserCollection:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+        meta:
+          type: object
+          properties:
+            current_page:
+              type: integer
+            from:
+              type: integer
+            last_page:
+              type: integer
+            per_page:
+              type: integer
+            to:
+              type: integer
+            total:
+              type: integer
+        links:
+          type: object
+          properties:
+            first:
+              type: string
+            last:
+              type: string
+            prev:
+              type: string
+              nullable: true
+            next:
+              type: string
+              nullable: true
+
+    HealthCheck:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "ok"
+        timestamp:
+          type: string
+          format: date-time
+        service:
+          type: string
+          example: "user-microservice"
+        version:
+          type: string
+          example: "1.0.0"
+
+    ReadinessCheck:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "ready"
+        timestamp:
+          type: string
+          format: date-time
+        checks:
+          type: object
+          properties:
+            database:
+              type: object
+              properties:
+                status:
+                  type: string
+                  example: "ok"
+            cache:
+              type: object
+              properties:
+                status:
+                  type: string
+                  example: "ok"
+
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Operation successful"
+
+    ValidationError:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "The given data was invalid."
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+
+tags:
+  - name: Health
+    description: Endpoints pour la surveillance de la santé du service
+  - name: Monitoring
+    description: Endpoints pour le monitoring et les métriques
+  - name: Authentication
+    description: Endpoints pour l'authentification et l'autorisation
+  - name: Users
+    description: Endpoints pour la gestion des utilisateurs

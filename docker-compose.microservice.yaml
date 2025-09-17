@@ -1,0 +1,129 @@
+version: '3.8'
+
+services:
+  # User Management Microservice
+  user-microservice:
+    build:
+      context: .
+      dockerfile: microservice.dockerfile
+    container_name: user-microservice
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+      - "8443:443"
+    environment:
+      - APP_NAME=UserMicroservice
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - APP_URL=http://localhost:8080
+      - DB_CONNECTION=mysql
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_DATABASE=user_microservice
+      - DB_USERNAME=microservice_user
+      - DB_PASSWORD=secure_password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - CACHE_STORE=redis
+      - SESSION_DRIVER=redis
+      - QUEUE_CONNECTION=redis
+    volumes:
+      - ./storage/logs:/app/storage/logs
+      - ./storage/app:/app/storage/app
+    depends_on:
+      - mysql
+      - redis
+    networks:
+      - microservice-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Base de données MySQL
+  mysql:
+    image: mysql:8.0
+    container_name: mysql-microservice
+    restart: unless-stopped
+    environment:
+      - MYSQL_ROOT_PASSWORD=root_password
+      - MYSQL_DATABASE=user_microservice
+      - MYSQL_USER=microservice_user
+      - MYSQL_PASSWORD=secure_password
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - microservice-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis pour cache et sessions
+  redis:
+    image: redis:7-alpine
+    container_name: redis-microservice
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - microservice-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Monitoring avec Prometheus (optionnel)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus-microservice
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    networks:
+      - microservice-network
+    profiles:
+      - monitoring
+
+  # Grafana pour visualisation (optionnel)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana-microservice
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - microservice-network
+    profiles:
+      - monitoring
+
+# Réseaux
+networks:
+  microservice-network:
+    driver: bridge
+
+# Volumes persistants
+volumes:
+  mysql_data:
+    driver: local
+  redis_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
