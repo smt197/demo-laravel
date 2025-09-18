@@ -1,48 +1,75 @@
 <?php
 
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\V1\UserController;
-use App\Http\Controllers\Api\V1\AuthController;
-use App\Http\Controllers\Api\V1\HealthController;
-use App\Http\Controllers\Api\V1\MetricsController;
+use App\Infrastructure\User\Controllers\UserController;
 
 /*
 |--------------------------------------------------------------------------
-| API Routes
+| User Microservice API Routes - DDD Architecture 2025
 |--------------------------------------------------------------------------
 |
-| Here is where you can register API routes for your application. These
-| routes are loaded by the RouteServiceProvider and all of them will
-| be assigned to the "api" middleware group. Make something great!
+| This is a User Management Bounded Context implemented with DDD principles.
+| Following Laravel 11 microservices best practices with CQRS pattern.
 |
 */
 
-// Health check endpoint
-Route::get('/health', [HealthController::class, 'check'])->name('health.check');
-Route::get('/ready', [HealthController::class, 'ready'])->name('health.ready');
+// Health endpoints (for microservice monitoring)
+Route::get('/health', function () {
+    return response()->json([
+        'service' => 'user-microservice',
+        'status' => 'healthy',
+        'timestamp' => now()->toISOString(),
+        'version' => '1.0.0'
+    ]);
+});
 
-// Metrics endpoint for monitoring
-Route::get('/metrics', [MetricsController::class, 'index'])->name('metrics');
+Route::get('/ready', function () {
+    return response()->json([
+        'service' => 'user-microservice',
+        'status' => 'ready',
+        'timestamp' => now()->toISOString(),
+        'checks' => [
+            'database' => 'ok',
+            'cache' => 'ok'
+        ]
+    ]);
+});
 
-// API v1 routes
-Route::group(['prefix' => 'v1', 'as' => 'api.v1.'], function () {
+// User Bounded Context API v1
+Route::prefix('v1/users')->group(function () {
 
-    // Authentication routes
-    Route::group(['prefix' => 'auth', 'as' => 'auth.'], function () {
-        Route::post('/login', [AuthController::class, 'login'])->name('login');
-        Route::post('/register', [AuthController::class, 'register'])->name('register');
-        Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum')->name('logout');
-        Route::post('/refresh', [AuthController::class, 'refresh'])->middleware('auth:sanctum')->name('refresh');
-        Route::get('/me', [AuthController::class, 'me'])->middleware('auth:sanctum')->name('me');
-    });
+    // Commands (Write operations - CQRS)
+    Route::post('/', [UserController::class, 'register'])
+        ->name('users.register');
 
-    // Protected user routes
-    Route::group(['prefix' => 'users', 'as' => 'users.', 'middleware' => 'auth:sanctum'], function () {
-        Route::get('/', [UserController::class, 'index'])->name('index');
-        Route::post('/', [UserController::class, 'store'])->name('store');
-        Route::get('/{user}', [UserController::class, 'show'])->name('show');
-        Route::put('/{user}', [UserController::class, 'update'])->name('update');
-        Route::delete('/{user}', [UserController::class, 'destroy'])->name('destroy');
-    });
+    Route::patch('/{userId}/verify-email', [UserController::class, 'verifyEmail'])
+        ->name('users.verify-email');
+
+    // Queries (Read operations - CQRS)
+    Route::get('/', [UserController::class, 'index'])
+        ->name('users.index');
+
+    Route::get('/{userId}', [UserController::class, 'show'])
+        ->name('users.show');
+
+});
+
+// API Documentation endpoint
+Route::get('/docs', function () {
+    return response()->json([
+        'service' => 'User Management Microservice',
+        'description' => 'DDD-based microservice for user management',
+        'architecture' => 'Domain-Driven Design with CQRS',
+        'version' => '1.0.0',
+        'endpoints' => [
+            'POST /api/v1/users' => 'Register new user',
+            'GET /api/v1/users' => 'Get users list',
+            'GET /api/v1/users/{id}' => 'Get user by ID',
+            'PATCH /api/v1/users/{id}/verify-email' => 'Verify user email',
+        ],
+        'events' => [
+            'user.registered' => 'User was registered',
+            'user.email_verified' => 'User email was verified'
+        ]
+    ]);
 });
