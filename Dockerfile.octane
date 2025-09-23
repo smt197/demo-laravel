@@ -13,16 +13,29 @@ RUN install-php-extensions \
    gd \
    redis \
    opcache \
-   pcntl
+   pcntl \
+   sockets \
+   amqp
 
 
 # Installer netcat, composer et Node.js
-RUN apt-get update && apt-get install -y netcat-traditional unzip curl && \
-    curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
-    apt-get install -y nodejs && \
-    rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y \
+    netcat-traditional \ 
+    unzip \ 
+    curl \
+    rabbitmq-server \
+    supervisor \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
+# Configuration RabbitMQ
+RUN rabbitmq-plugins enable rabbitmq_management
+
+# Copier la configuration Supervisor
+COPY /supervisor/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 # Définir le répertoire de travail
 WORKDIR /app
@@ -74,7 +87,7 @@ COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Exposer les ports
-EXPOSE 80 443 2019
+EXPOSE 80 443 2019 5672 15672
 
 
 # Utiliser le script de démarrage
