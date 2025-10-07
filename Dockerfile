@@ -13,7 +13,8 @@ RUN install-php-extensions \
    gd \
    redis \
    opcache \
-   pcntl
+   pcntl \
+   sockets
 
 
 # Installer composer
