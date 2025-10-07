@@ -53,5 +53,5 @@ jobs:
           echo "Triggering Dokploy webhook..."
           # payload includes ref and image (dokploy will use tag matching configured tag)
           curl -s -X POST -H "Content-Type: application/json" \
-            -d '{"ref":"smt-microservice","image":"ghcr.io/'"${{ github.repository_owner }}"'/laravel-dokploy:smt-microservice"}' \
+            -d '{"ref":"latest","image":"ghcr.io/'"${{ github.repository_owner }}"'/laravel-dokploy:latest"}' \
             "$DOKPLOY_WEBHOOK"
