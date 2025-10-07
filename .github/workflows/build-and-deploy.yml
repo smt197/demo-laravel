@@ -1,47 +1,70 @@
-# .github/workflows/build-and-deploy.yml
 name: Build and Push Docker image + Trigger Dokploy
 
 on:
   push:
     branches:
-      - smt-microservice  # change to your branch if needed
+      - smt-microservice
 
+# Ajouter des permissions étendues
 permissions:
   contents: read
   packages: write
   id-token: write
+  # Ajouter ces permissions si nécessaire
+  attestations: write
+  deployments: write
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
+        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: |
+            image=moby/buildkit:buildx-stable-1
 
-      - name: Log in to GitHub Container Registry (GHCR)
-        uses: docker/login-action@v2
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          # Option 1: Use the built-in GITHUB_TOKEN (recommended if repo permissions allow)
           password: ${{ secrets.GITHUB_TOKEN }}
-          # Option 2: Or use a personal token if you stored GHCR_PAT in secrets:
-          # password: ${{ secrets.GHCR_PAT }}
+
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/laravel-dokploy
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix={{branch}}-
+            latest
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
+          file: supervisor.dockerfile
+          platforms: linux/amd64,linux/arm64
           push: true
-          tags: |
-            ghcr.io/${{ github.repository_owner }}/laravel-dokploy:latest
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
       - name: Trigger Dokploy webhook to redeploy
         env:
           DOKPLOY_WEBHOOK: ${{ secrets.DOKPLOY_WEBHOOK_URL }}
@@ -51,7 +74,6 @@ jobs:
             exit 1
           fi
           echo "Triggering Dokploy webhook..."
-          # payload includes ref and image (dokploy will use tag matching configured tag)
           curl -s -X POST -H "Content-Type: application/json" \
             -d '{"ref":"latest","image":"ghcr.io/'"${{ github.repository_owner }}"'/laravel-dokploy:latest"}' \
             "$DOKPLOY_WEBHOOK"
