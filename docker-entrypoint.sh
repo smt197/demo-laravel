@@ -5,27 +5,6 @@ set -e
 
 echo "🚀 Starting Laravel application..."
 
-# Attendre que RabbitMQ soit disponible
-echo "⏳ Waiting for RabbitMQ to be ready..."
-timeout=30
-count=0
-until rabbitmqctl status >/dev/null 2>&1 || [ $count -eq $timeout ]; do
-    echo "RabbitMQ not ready yet, waiting... ($count/$timeout)"
-    sleep 2
-    count=$((count+1))
-done
-
-if [ $count -eq $timeout ]; then
-    echo "⚠️  RabbitMQ startup timeout, continuing anyway..."
-else
-    echo "✅ RabbitMQ is ready!"
-    
-    # Configurer RabbitMQ pour Laravel
-    echo "🔧 Setting up RabbitMQ user for Laravel..."
-    rabbitmqctl add_user GB78U4zfAm4hRMGS secret 2>/dev/null || echo "User already exists"
-    rabbitmqctl set_user_tags GB78U4zfAm4hRMGS administrator 2>/dev/null || true
-    rabbitmqctl set_permissions -p / GB78U4zfAm4hRMGS ".*" ".*" ".*" 2>/dev/null || true
-fi
 
 echo "✅ Database connection established"
 
