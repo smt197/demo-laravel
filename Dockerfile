@@ -1,48 +1,79 @@
-# Stage 1: Build assets and install Composer dependencies
+# Image de base FrankenPHP
 FROM dunglas/frankenphp:latest-php8.3
 
-RUN apt-get update \
-    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-    git \
-    unzip \
-    librabbitmq-dev \
-    libpq-dev \
-    supervisor
 
+# Installer les extensions PHP nécessaires pour Laravel
 RUN install-php-extensions \
-    gd \
-    pcntl \
-    opcache \
-    pdo \
-    pdo_mysql \
-    redis \
-        zip \
-    intl 
+   pdo_mysql \
+   mysqli \
+   mbstring \
+   xml \
+   zip \
+   bcmath \
+   gd \
+   redis \
+   opcache \
+   pcntl
 
+
+# Installer composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-WORKDIR /var/www/html
+# Installer Node.js et supervisor
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get update && apt-get install -y nodejs supervisor \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy the Laravel application files into the container.
-COPY . .
 
-# Copy configuration files
-COPY ./supervisor/php.ini /usr/local/etc/php/
-COPY ./supervisor/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+# Définir le répertoire de travail
+WORKDIR /app
+
+
+# Copier TOUT le projet Laravel
+COPY . /app
 
 # Install PHP extensions
 RUN pecl install xdebug
 
-# Install Laravel dependencies using Composer.
-RUN composer install
+# Installer les dépendances PHP
+RUN composer install --no-dev --optimize-autoloader
+
 
 # Enable PHP extensions
 RUN docker-php-ext-enable xdebug
 
-# Set permissions for Laravel.
-RUN chown -R www-data:www-data storage bootstrap/cache
 
-EXPOSE 80 443
+# Installer les dépendances npm et compiler les assets
+RUN if [ -f package.json ]; then \
+        npm ci && \
+        npm run build; \
+    else \
+        echo "No package.json found, skipping npm build"; \
+    fi
 
-# Start Supervisor.
-CMD ["/usr/bin/supervisord", "-n", "-c",  "/supervisor/supervisord.conf"]
+
+# Utiliser .env s'il existe, sinon copier .env.example
+# RUN if [ ! -f /app/.env ]; then cp /app/.env.example /app/.env; fi
+
+
+# Créer les répertoires nécessaires et définir les permissions
+RUN chown -R www-data:www-data /app/storage /app/bootstrap/cache
+
+
+
+# Copier la configuration supervisor
+COPY supervisor/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+# Copier et configurer le script de démarrage
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+# Exposer les ports
+EXPOSE 80 443 2019
+
+
+# Utiliser le script de démarrage qui lance supervisor
+CMD ["/usr/local/bin/docker-entrypoint.sh"]
+
+
+
