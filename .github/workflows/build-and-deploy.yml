@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - smt-microservice
-
 # Ajouter des permissions étendues
 permissions:
   contents: read
